@@ -19,14 +19,16 @@ let canvas;
 let simW = 800, simH = 600;
 
 const state = {
-	// Physical parameters
-	g: 0, // px/s^2 (downwards)
+	// Physical parameters (SI friendly where applicable)
+	g: 9.81, // m/s^2 (downwards)
 	air: 0, // linear drag kg/s
 	collideBobs: false,
 
-	L1: 200,
-	L2: 200,
-	k1: 5000, // stiffness derived from elasticity slider
+	// Scale and lengths
+	pxPerM: 100, // pixels per meter
+	L1_m: 2.0, // meters
+	L2_m: 2.0, // meters
+	k1: 5000, // elasticity maps to spring stiffness
 	k2: 5000,
 	m1: 1,
 	m2: 1,
@@ -40,10 +42,10 @@ const state = {
 	// Geometry
 	pivot: null, // p5.Vector once canvas exists
 
-			// External forces
-			forces: [], // {id, x, y, angleDeg, magnitude, radius}
-			nextForceId: 1,
-			placingForce: false,
+	// External forces
+	forces: [], // {id, x(px), y(px), angleDeg, magnitude(N), radius_m}
+	nextForceId: 1,
+	placingForce: false,
 
 	paused: false,
 };
@@ -79,9 +81,11 @@ function addExternalForces(pos) {
 	let F = vec(0, 0);
 	for (const f of state.forces) {
 		const d = dist(pos.x, pos.y, f.x, f.y);
-		if (d <= f.radius) {
+		const rpx = (f.radius_m ?? 0) * state.pxPerM;
+		if (d <= rpx) {
 			const dir = fromAngleDeg(f.angleDeg);
-			F.add(dir.mult(f.magnitude));
+			// Convert N -> pixels units
+			F.add(dir.mult(f.magnitude * state.pxPerM));
 		}
 	}
 	return F;
@@ -91,19 +95,22 @@ function applyAngles(theta1Deg, theta2Deg) {
 	const t1 = (theta1Deg * Math.PI) / 180;
 	const t2 = (theta2Deg * Math.PI) / 180;
 	const base = state.pivot.copy();
-	p1 = base.copy().add(p5.Vector.fromAngle(t1).mult(state.L1));
-	p2 = p1.copy().add(p5.Vector.fromAngle(t1 + t2).mult(state.L2));
+	const L1px = state.L1_m * state.pxPerM;
+	const L2px = state.L2_m * state.pxPerM;
+	p1 = base.copy().add(p5.Vector.fromAngle(t1).mult(L1px));
+	p2 = p1.copy().add(p5.Vector.fromAngle(t1 + t2).mult(L2px));
 	v1.set(0, 0);
 	v2.set(0, 0);
 }
 
 function resetSim() {
-	// Assume ~100 px ≈ 1 m, so Earth g ≈ 981 px/s^2
-	state.g = 981;
+	// Defaults in SI; conversions happen inside physics
+	state.pxPerM = 100;
+	state.g = 9.81;
 	state.air = 0;
 	state.collideBobs = false;
-	state.L1 = 200;
-	state.L2 = 200;
+	state.L1_m = 2.0;
+	state.L2_m = 2.0;
 	state.k1 = pctToStiffness(100);
 	state.k2 = pctToStiffness(100);
 	state.m1 = 1;
@@ -119,12 +126,12 @@ function resetSim() {
 
 	// UI sync
 	byId('gravity').value = String(state.g);
-		byId('gravityOut').textContent = state.g.toFixed(0);
+		byId('gravityOut').textContent = state.g.toFixed(2);
 	byId('air').value = String(state.air);
 	byId('airOut').textContent = state.air.toFixed(2);
 	byId('collideBobs').checked = state.collideBobs;
-	byId('L1').value = String(state.L1);
-	byId('L2').value = String(state.L2);
+	byId('L1').value = String(state.L1_m.toFixed(2));
+	byId('L2').value = String(state.L2_m.toFixed(2));
 	byId('elast1').value = '100';
 	byId('elast1Out').textContent = '100%';
 	byId('elast2').value = '100';
@@ -137,6 +144,7 @@ function resetSim() {
 	byId('theta2').value = String(-30);
 	byId('dt').value = String(state.dt);
 		byId('substeps').value = String(state.substeps);
+		if (byId('pxPerM')) byId('pxPerM').value = String(state.pxPerM);
 		if (byId('showTrails')) byId('showTrails').checked = true;
 	renderForceList();
 
@@ -206,15 +214,15 @@ function stepPhysics(dt) {
 
 	// Forces on bob1
 	let F1 = vec(0, 0);
-	// Gravity
-	F1.y += state.g * m1eff;
+	// Gravity (convert to px/s^2)
+	F1.y += (state.g * state.pxPerM) * m1eff;
 	// Air drag
 	F1.add(v1.copy().mult(-state.air));
 	// Spring to pivot (string 1)
 	const d1 = p5.Vector.sub(p1, state.pivot);
 	const len1 = Math.max(1e-6, d1.mag());
 	const dir1 = d1.copy().div(len1);
-	const ext1 = len1 - state.L1;
+	const ext1 = len1 - state.L1_m * state.pxPerM;
 	const k1 = state.k1;
 	// Damping along spring direction (critical-ish damping)
 	const c1 = 2 * Math.sqrt(k1 * m1eff) * 0.05;
@@ -224,7 +232,7 @@ function stepPhysics(dt) {
 	const d12 = p5.Vector.sub(p2, p1);
 	const len2 = Math.max(1e-6, d12.mag());
 	const dir12 = d12.copy().div(len2);
-	const ext2 = len2 - state.L2;
+	const ext2 = len2 - state.L2_m * state.pxPerM;
 	const k2 = state.k2;
 	const c2 = 2 * Math.sqrt(k2 * Math.min(m1eff, m2eff)) * 0.05;
 	const vrel12 = p5.Vector.sub(v2, v1);
@@ -237,7 +245,7 @@ function stepPhysics(dt) {
 
 	// Forces on bob2
 	let F2 = vec(0, 0);
-	F2.y += state.g * m2eff;
+	F2.y += (state.g * state.pxPerM) * m2eff;
 	F2.add(v2.copy().mult(-state.air));
 	// Spring 2 on bob2 is -F12
 	F2.add(F12.copy().mult(-1));
@@ -355,10 +363,11 @@ function drawForces() {
 		// Area of effect
 		noFill();
 		stroke(0, 255, 180, 100);
-		circle(f.x, f.y, f.radius * 2);
+		const rpx = (f.radius_m ?? 0) * state.pxPerM;
+		circle(f.x, f.y, rpx * 2);
 		// Arrow
 		const dir = fromAngleDeg(f.angleDeg);
-		const arrowLen = Math.min(80, 10 + f.magnitude * 0.5);
+		const arrowLen = Math.min(120, 10 + f.magnitude * 0.5); // visual only
 		const tip = createVector(f.x, f.y).add(dir.copy().mult(arrowLen));
 		stroke(0, 255, 180);
 		strokeWeight(3);
@@ -381,7 +390,7 @@ function mousePressed() {
 	// If placing a force, add it where clicked
 	if (state.placingForce) {
 		const id = state.nextForceId++;
-		state.forces.push({ id, x: mouseX, y: mouseY, angleDeg: 0, magnitude: 0, radius: 80 });
+		state.forces.push({ id, x: mouseX, y: mouseY, angleDeg: 0, magnitude: 0, radius_m: 0.8 });
 		state.placingForce = false;
 		renderForceList();
 		return;
@@ -437,7 +446,7 @@ function wireUI() {
 	// Environment
 	byId('gravity').addEventListener('input', (e) => {
 		state.g = Number(e.target.value);
-			byId('gravityOut').textContent = state.g.toFixed(0);
+			byId('gravityOut').textContent = state.g.toFixed(2);
 	});
 	byId('air').addEventListener('input', (e) => {
 		state.air = Number(e.target.value);
@@ -447,9 +456,9 @@ function wireUI() {
 		state.collideBobs = e.target.checked;
 	});
 
-	// Geometry
-	byId('L1').addEventListener('change', (e) => { state.L1 = Math.max(10, Number(e.target.value)); });
-	byId('L2').addEventListener('change', (e) => { state.L2 = Math.max(10, Number(e.target.value)); });
+	// Geometry (meters)
+	byId('L1').addEventListener('change', (e) => { state.L1_m = Math.max(0.1, Number(e.target.value)); });
+	byId('L2').addEventListener('change', (e) => { state.L2_m = Math.max(0.1, Number(e.target.value)); });
 	byId('applyAnglesBtn').addEventListener('click', () => {
 		const th1 = Number(byId('theta1').value) || 0;
 		const th2 = Number(byId('theta2').value) || 0;
@@ -482,6 +491,11 @@ function wireUI() {
 	// Advanced
 	byId('dt').addEventListener('change', (e) => { state.dt = Math.max(0.001, Number(e.target.value)); });
 	byId('substeps').addEventListener('change', (e) => { state.substeps = Math.max(1, Number(e.target.value)); });
+	if (byId('pxPerM')) {
+		byId('pxPerM').addEventListener('change', (e) => {
+			state.pxPerM = Math.max(10, Number(e.target.value));
+		});
+	}
 			// Display
 			byId('showTrails').addEventListener('change', (e) => {
 				state.showTrails = e.target.checked;
@@ -533,31 +547,31 @@ function renderForceList() {
 		row1.appendChild(magLabel);
 		wrapper.appendChild(row1);
 
-				// Radius & Position
+				// Radius (m) & Position (m)
 		const row2 = document.createElement('div');
 		row2.className = 'row2';
 		const radLabel = document.createElement('label');
-		radLabel.innerHTML = `Radius (px)
-			<input type="number" step="1" min="10" value="${f.radius}" />`;
+			radLabel.innerHTML = `Radius (m)
+					<input type="number" step="0.01" min="0.1" value="${f.radius_m ?? 0.8}" />`;
 		const radInput = radLabel.querySelector('input');
 		radInput.addEventListener('change', (e) => {
-			f.radius = Math.max(10, Number(e.target.value));
+				f.radius_m = Math.max(0.1, Number(e.target.value));
 		});
 				const xyWrap = document.createElement('div');
 				xyWrap.className = 'row2';
 				const xLabel = document.createElement('label');
-				xLabel.innerHTML = `X (px)
-					<input type="number" step="1" value="${f.x.toFixed(0)}" />`;
+						xLabel.innerHTML = `X (m)
+							<input type="number" step="0.01" value="${(f.x / state.pxPerM).toFixed(2)}" />`;
 				const xInput = xLabel.querySelector('input');
 				xInput.addEventListener('change', (e) => {
-					f.x = Number(e.target.value);
+							f.x = Number(e.target.value) * state.pxPerM;
 				});
 				const yLabel = document.createElement('label');
-				yLabel.innerHTML = `Y (px)
-					<input type="number" step="1" value="${f.y.toFixed(0)}" />`;
+						yLabel.innerHTML = `Y (m)
+							<input type="number" step="0.01" value="${(f.y / state.pxPerM).toFixed(2)}" />`;
 				const yInput = yLabel.querySelector('input');
 				yInput.addEventListener('change', (e) => {
-					f.y = Number(e.target.value);
+							f.y = Number(e.target.value) * state.pxPerM;
 				});
 				row2.appendChild(radLabel);
 				wrapper.appendChild(row2);
