@@ -14,22 +14,21 @@
 		<div id="app">
 			<div id="sim-pane">
 				<div id="canvas-holder" aria-label="Simulation viewport"></div>
-				<div id="sim-controls-inline">
-					<button id="resetBtn" title="Reset simulation">Reset</button>
-					<button id="pausePlayBtn" title="Pause/Play simulation">Pause</button>
-					<span class="hint">Drag bobs or pivot to set initial state. Click “Add Force”, then click in the viewport to place a force.</span>
-				</div>
+						<div id="sim-controls-inline">
+							<button id="resetBtn" title="Reset simulation">Reset</button>
+							<button id="pausePlayBtn" title="Pause/Play simulation">Pause</button>
+						</div>
 			</div>
 			<aside id="control-pane" aria-label="Controls">
 				<h2>Parameters</h2>
 
 				<section class="group">
 					<h3>Environment</h3>
-					<label>
-						Gravity g (px/s²)
-						<input id="gravity" type="range" min="-50" max="50" step="0.1" value="0" />
-						<output id="gravityOut">0</output>
-					</label>
+								<label>
+									Gravity g (px/s²)
+									<input id="gravity" type="range" min="-50" max="50" step="0.1" value="9.8" />
+									<output id="gravityOut">9.8</output>
+								</label>
 					<label>
 						Air resistance c (kg/s)
 						<input id="air" type="range" min="0" max="2" step="0.01" value="0" />
@@ -109,9 +108,9 @@
 
 				<section class="group">
 					<h3>External Forces</h3>
-					<div class="row">
-						<button id="addForceBtn">Add force</button>
-					</div>
+											<div class="row">
+												<button id="addForceBtn">Add force</button>
+											</div>
 					<div id="forceList"></div>
 				</section>
 
@@ -128,10 +127,6 @@
 						</label>
 					</details>
 				</section>
-
-				<footer>
-					<span>Powered by p5.js and math.js</span>
-				</footer>
 			</aside>
 		</div>
 

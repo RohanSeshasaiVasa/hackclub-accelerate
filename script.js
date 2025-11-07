@@ -40,10 +40,10 @@ const state = {
 	// Geometry
 	pivot: null, // p5.Vector once canvas exists
 
-	// External forces
-	forces: [], // {id, x, y, angleDeg, magnitude, radius}
-	nextForceId: 1,
-	placingForce: false,
+			// External forces
+			forces: [], // {id, x, y, angleDeg, magnitude, radius}
+			nextForceId: 1,
+			placingForce: false,
 
 	paused: false,
 };
@@ -96,7 +96,7 @@ function applyAngles(theta1Deg, theta2Deg) {
 }
 
 function resetSim() {
-	state.g = 0;
+	state.g = 9.81;
 	state.air = 0;
 	state.collideBobs = false;
 	state.L1 = 200;
@@ -349,7 +349,7 @@ function mousePressed() {
 		return;
 	}
 
-	// Try selecting an existing force to drag
+	// Allow dragging forces
 	for (const f of state.forces) {
 		if (dist(mouseX, mouseY, f.x, f.y) <= 12) {
 			dragging = { type: 'force', idx: f.id };
@@ -357,19 +357,9 @@ function mousePressed() {
 		}
 	}
 
-	// Try dragging pivot
+	// Only allow dragging pivot
 	if (dist(mouseX, mouseY, state.pivot.x, state.pivot.y) <= 10) {
 		dragging = { type: 'pivot', idx: -1 };
-		return;
-	}
-
-	// Try dragging a bob
-	if (dist(mouseX, mouseY, p1.x, p1.y) <= bobRadius(state.m1)) {
-		dragging = { type: 'bob', idx: 1 };
-		return;
-	}
-	if (dist(mouseX, mouseY, p2.x, p2.y) <= bobRadius(state.m2)) {
-		dragging = { type: 'bob', idx: 2 };
 		return;
 	}
 }
@@ -379,14 +369,6 @@ function mouseDragged() {
 	if (dragging.type === 'pivot') {
 		state.pivot.set(mouseX, mouseY);
 		v1.set(0, 0); v2.set(0, 0);
-	} else if (dragging.type === 'bob') {
-		if (dragging.idx === 1) {
-			p1.set(mouseX, mouseY);
-			v1.set(0, 0);
-		} else if (dragging.idx === 2) {
-			p2.set(mouseX, mouseY);
-			v2.set(0, 0);
-		}
 	} else if (dragging.type === 'force') {
 		const f = state.forces.find(ff => ff.id === dragging.idx);
 		if (f) { f.x = mouseX; f.y = mouseY; }
@@ -454,10 +436,10 @@ function wireUI() {
 	byId('ms1').addEventListener('change', (e) => { state.ms1 = Math.max(0, Number(e.target.value)); });
 	byId('ms2').addEventListener('change', (e) => { state.ms2 = Math.max(0, Number(e.target.value)); });
 
-	// External forces
-	byId('addForceBtn').addEventListener('click', () => {
-		state.placingForce = true;
-	});
+		// External forces
+		byId('addForceBtn').addEventListener('click', () => {
+			state.placingForce = true;
+		});
 
 	// Advanced
 	byId('dt').addEventListener('change', (e) => { state.dt = Math.max(0.001, Number(e.target.value)); });
@@ -509,7 +491,7 @@ function renderForceList() {
 		row1.appendChild(magLabel);
 		wrapper.appendChild(row1);
 
-		// Radius & Move hint
+				// Radius & Position
 		const row2 = document.createElement('div');
 		row2.className = 'row2';
 		const radLabel = document.createElement('label');
@@ -519,13 +501,34 @@ function renderForceList() {
 		radInput.addEventListener('change', (e) => {
 			f.radius = Math.max(10, Number(e.target.value));
 		});
-		const hint = document.createElement('div');
-		hint.style.color = 'var(--muted)';
-		hint.style.alignSelf = 'end';
-		hint.textContent = 'Drag circle in viewport to move';
-		row2.appendChild(radLabel);
-		row2.appendChild(hint);
-		wrapper.appendChild(row2);
+				const xyWrap = document.createElement('div');
+				xyWrap.className = 'row2';
+				const xLabel = document.createElement('label');
+				xLabel.innerHTML = `X (px)
+					<input type="number" step="1" value="${f.x.toFixed(0)}" />`;
+				const xInput = xLabel.querySelector('input');
+				xInput.addEventListener('change', (e) => {
+					f.x = Number(e.target.value);
+				});
+				const yLabel = document.createElement('label');
+				yLabel.innerHTML = `Y (px)
+					<input type="number" step="1" value="${f.y.toFixed(0)}" />`;
+				const yInput = yLabel.querySelector('input');
+				yInput.addEventListener('change', (e) => {
+					f.y = Number(e.target.value);
+				});
+				row2.appendChild(radLabel);
+				wrapper.appendChild(row2);
+				xyWrap.appendChild(xLabel);
+				xyWrap.appendChild(yLabel);
+				wrapper.appendChild(xyWrap);
+
+				// Hint
+				const hint = document.createElement('div');
+				hint.style.color = 'var(--muted)';
+				hint.style.marginTop = '6px';
+				hint.textContent = 'Tip: Drag the circle in the viewport to move this force.';
+				wrapper.appendChild(hint);
 
 		list.appendChild(wrapper);
 	});
