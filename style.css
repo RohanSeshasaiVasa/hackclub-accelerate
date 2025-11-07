@@ -1,0 +1,128 @@
+:root {
+	--bg: #0f1220;
+	--panel: #171a2b;
+	--text: #e6e9f0;
+	--muted: #a8b0c7;
+	--accent: #6ea8ff;
+	--accent-2: #8be9fd;
+	--border: #262a40;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html, body {
+	height: 100%;
+}
+
+body {
+	margin: 0;
+	font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+	background: var(--bg);
+	color: var(--text);
+}
+
+#app {
+	display: flex;
+	height: 100vh;
+	width: 100vw;
+	overflow: hidden;
+}
+
+#viewport {
+	flex: 3 1 0%; /* ~75% */
+	position: relative;
+	background: radial-gradient(1200px 600px at 30% 20%, #161a2c 0%, #0f1220 60%, #0d1020 100%);
+	border-right: 1px solid var(--border);
+}
+
+/* Ensure the p5 canvas fills the viewport container */
+#viewport canvas {
+	display: block;
+}
+
+#controls {
+	flex: 1 1 0%; /* ~25% */
+	padding: 18px 16px 24px;
+	background: var(--panel);
+	overflow-y: auto;
+}
+
+#controls h2 {
+	margin: 0 0 12px 0;
+	font-size: 18px;
+	font-weight: 600;
+}
+
+.form-row {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-bottom: 14px;
+}
+
+label {
+	font-size: 13px;
+	color: var(--muted);
+}
+
+input[type="range"] {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 100%;
+	height: 4px;
+	border-radius: 999px;
+	background: #262a40;
+	outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: var(--accent);
+	cursor: pointer;
+	border: 2px solid #1b2036;
+	box-shadow: 0 0 0 2px rgba(110,168,255,0.2);
+}
+
+input[type="checkbox"] {
+	accent-color: var(--accent);
+}
+
+button {
+	appearance: none;
+	background: linear-gradient(180deg, var(--accent), #4a82e2);
+	color: white;
+	border: none;
+	border-radius: 8px;
+	padding: 10px 12px;
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+button:hover {
+	filter: brightness(1.05);
+}
+
+.note {
+	margin-top: 12px;
+	font-size: 12px;
+	color: var(--muted);
+}
+
+/* Responsive fallback: stack on very narrow screens */
+@media (max-width: 900px) {
+	#app {
+		flex-direction: column;
+	}
+	#viewport, #controls {
+		flex: none;
+		width: 100%;
+		height: 50vh;
+	}
+}

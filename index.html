@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>2D Simulation – p5.js + math.js</title>
+		<link rel="stylesheet" href="style.css" />
+		<!-- p5.js -->
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+		<!-- math.js -->
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+	</head>
+	<body>
+		<div id="app">
+			<main id="viewport" aria-label="2D simulation viewport"></main>
+			<aside id="controls" aria-label="Simulation parameters">
+				<form id="paramsForm">
+					<div class="form-row">
+						<label for="showAxes">
+							<input type="checkbox" id="showAxes" checked />
+							Show axes
+						</label>
+					</div>
+				</form>
+			</aside>
+		</div>
+
+		<script src="script.js"></script>
+	</body>
+	</html>
