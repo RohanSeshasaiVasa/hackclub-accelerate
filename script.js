@@ -51,6 +51,8 @@ const state = {
 // Dynamic state of bobs
 let p1, p2; // positions
 let v1, v2; // velocities
+let trail1 = [], trail2 = [];
+const MAX_TRAIL_POINTS = 800;
 
 // Interaction
 let dragging = { type: null, idx: -1 }; // type: 'pivot' | 'bob' | 'force'
@@ -96,7 +98,8 @@ function applyAngles(theta1Deg, theta2Deg) {
 }
 
 function resetSim() {
-	state.g = 9.81;
+	// Assume ~100 px ≈ 1 m, so Earth g ≈ 981 px/s^2
+	state.g = 981;
 	state.air = 0;
 	state.collideBobs = false;
 	state.L1 = 200;
@@ -108,14 +111,15 @@ function resetSim() {
 	state.ms1 = 0;
 	state.ms2 = 0;
 	state.dt = 0.016;
-	state.substeps = 5;
+	state.substeps = 8;
 	state.forces = [];
 	state.nextForceId = 1;
 	state.placingForce = false;
+		state.showTrails = true;
 
 	// UI sync
 	byId('gravity').value = String(state.g);
-	byId('gravityOut').textContent = state.g.toFixed(1);
+		byId('gravityOut').textContent = state.g.toFixed(0);
 	byId('air').value = String(state.air);
 	byId('airOut').textContent = state.air.toFixed(2);
 	byId('collideBobs').checked = state.collideBobs;
@@ -132,10 +136,13 @@ function resetSim() {
 	byId('theta1').value = String(-30);
 	byId('theta2').value = String(-30);
 	byId('dt').value = String(state.dt);
-	byId('substeps').value = String(state.substeps);
+		byId('substeps').value = String(state.substeps);
+		if (byId('showTrails')) byId('showTrails').checked = true;
 	renderForceList();
 
 	applyAngles(-30, -30);
+		// Clear trails
+		trail1 = []; trail2 = [];
 }
 
 function byId(id) { return document.getElementById(id); }
@@ -179,9 +186,11 @@ function draw() {
 		const steps = Math.max(1, Math.floor(state.substeps));
 		const h = Number(state.dt) / steps;
 		for (let i = 0; i < steps; i++) stepPhysics(h);
+			updateTrails();
 	}
 
 	// Render system
+		drawTrails();
 	drawStrings();
 	drawPivot();
 	drawBobs();
@@ -268,6 +277,35 @@ function handleBobCollision(m1eff, m2eff) {
 		v1.add(impulse.copy().mult(-1 / m1eff));
 		v2.add(impulse.copy().mult(+1 / m2eff));
 	}
+}
+
+// -------------------------------
+// Trails
+// -------------------------------
+function updateTrails() {
+	if (!state.showTrails) return;
+	trail1.push(p1.copy());
+	trail2.push(p2.copy());
+	if (trail1.length > MAX_TRAIL_POINTS) trail1.shift();
+	if (trail2.length > MAX_TRAIL_POINTS) trail2.shift();
+}
+
+function drawTrails() {
+	if (!state.showTrails) return;
+	push();
+	noFill();
+	// Bob1 trail (match bob color)
+	stroke(255, 120, 120, 150);
+	strokeWeight(2);
+	beginShape();
+	for (const pt of trail1) vertex(pt.x, pt.y);
+	endShape();
+	// Bob2 trail (match bob color)
+	stroke(120, 220, 255, 150);
+	beginShape();
+	for (const pt of trail2) vertex(pt.x, pt.y);
+	endShape();
+	pop();
 }
 
 // -------------------------------
@@ -399,7 +437,7 @@ function wireUI() {
 	// Environment
 	byId('gravity').addEventListener('input', (e) => {
 		state.g = Number(e.target.value);
-		byId('gravityOut').textContent = state.g.toFixed(1);
+			byId('gravityOut').textContent = state.g.toFixed(0);
 	});
 	byId('air').addEventListener('input', (e) => {
 		state.air = Number(e.target.value);
@@ -444,6 +482,10 @@ function wireUI() {
 	// Advanced
 	byId('dt').addEventListener('change', (e) => { state.dt = Math.max(0.001, Number(e.target.value)); });
 	byId('substeps').addEventListener('change', (e) => { state.substeps = Math.max(1, Number(e.target.value)); });
+			// Display
+			byId('showTrails').addEventListener('change', (e) => {
+				state.showTrails = e.target.checked;
+			});
 }
 
 function renderForceList() {

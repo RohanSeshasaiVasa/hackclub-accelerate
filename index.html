@@ -26,8 +26,8 @@
 					<h3>Environment</h3>
 								<label>
 									Gravity g (px/s²)
-									<input id="gravity" type="range" min="-50" max="50" step="0.1" value="9.8" />
-									<output id="gravityOut">9.8</output>
+												<input id="gravity" type="range" min="-2000" max="2000" step="1" value="981" />
+												<output id="gravityOut">981</output>
 								</label>
 					<label>
 						Air resistance c (kg/s)
@@ -114,6 +114,13 @@
 					<div id="forceList"></div>
 				</section>
 
+						<section class="group">
+							<h3>Display</h3>
+							<label class="checkbox">
+								<input id="showTrails" type="checkbox" checked /> Show trails
+							</label>
+						</section>
+
 				<section class="group smallprint">
 					<details>
 						<summary>Advanced</summary>
@@ -123,7 +130,7 @@
 						</label>
 						<label>
 							Sub-steps (per frame)
-							<input id="substeps" type="number" min="1" max="50" step="1" value="5" />
+										<input id="substeps" type="number" min="1" max="50" step="1" value="8" />
 						</label>
 					</details>
 				</section>
