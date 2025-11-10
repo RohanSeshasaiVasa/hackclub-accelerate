@@ -387,8 +387,8 @@ function drawForces() {
 function mousePressed() {
 	if (!isMouseInCanvas()) return;
 
-	// If placing a force, add it where clicked
-	if (state.placingForce) {
+	// If placing a force, allow only while paused
+	if (state.paused && state.placingForce) {
 		const id = state.nextForceId++;
 		state.forces.push({ id, x: mouseX, y: mouseY, angleDeg: 0, magnitude: 0, radius_m: 0.8 });
 		state.placingForce = false;
@@ -396,38 +396,87 @@ function mousePressed() {
 		return;
 	}
 
-	// Allow dragging forces
-	for (const f of state.forces) {
-		if (dist(mouseX, mouseY, f.x, f.y) <= 12) {
-			dragging = { type: 'force', idx: f.id };
-			return;
+	// Allow dragging forces only while paused
+	if (state.paused) {
+		for (const f of state.forces) {
+			if (dist(mouseX, mouseY, f.x, f.y) <= 12) {
+				dragging = { type: 'force', idx: f.id };
+				return;
+			}
 		}
 	}
 
-	// Only allow dragging pivot
+	// Pivot drag: always allowed, moves the entire setup (pivot + bobs + trails)
 	if (dist(mouseX, mouseY, state.pivot.x, state.pivot.y) <= 10) {
-		dragging = { type: 'pivot', idx: -1 };
+		dragging = { type: 'pivot', idx: -1, lastX: mouseX, lastY: mouseY };
 		return;
+	}
+
+	// While paused, allow dragging bobs to manually set positions
+	if (state.paused) {
+		if (dist(mouseX, mouseY, p1.x, p1.y) <= bobRadius(state.m1)) {
+			dragging = { type: 'bob', idx: 1 };
+			return;
+		}
+		if (dist(mouseX, mouseY, p2.x, p2.y) <= bobRadius(state.m2)) {
+			dragging = { type: 'bob', idx: 2 };
+			return;
+		}
 	}
 }
 
 function mouseDragged() {
 	if (!isMouseInCanvas()) return;
 	if (dragging.type === 'pivot') {
-		state.pivot.set(mouseX, mouseY);
-		v1.set(0, 0); v2.set(0, 0);
-	} else if (dragging.type === 'force') {
+		const dx = mouseX - (dragging.lastX ?? mouseX);
+		const dy = mouseY - (dragging.lastY ?? mouseY);
+		dragging.lastX = mouseX; dragging.lastY = mouseY;
+		// Move entire setup by delta (do NOT change velocities)
+		state.pivot.add(dx, dy);
+		p1.add(dx, dy);
+		p2.add(dx, dy);
+		// Move trails as well to keep continuity
+		if (trail1.length) for (const pt of trail1) { pt.x += dx; pt.y += dy; }
+		if (trail2.length) for (const pt of trail2) { pt.x += dx; pt.y += dy; }
+	} else if (dragging.type === 'force' && state.paused) {
 		const f = state.forces.find(ff => ff.id === dragging.idx);
 		if (f) { f.x = mouseX; f.y = mouseY; }
+	} else if (dragging.type === 'bob' && state.paused) {
+		if (dragging.idx === 1) { p1.set(mouseX, mouseY); v1.set(0, 0); }
+		if (dragging.idx === 2) { p2.set(mouseX, mouseY); v2.set(0, 0); }
 	}
 }
 
 function mouseReleased() {
+	// If user manually adjusted bobs during pause, treat as new initial state
+	if (state.paused && dragging.type === 'bob') {
+		v1.set(0, 0); v2.set(0, 0);
+		trail1 = []; trail2 = [];
+		updateAngleInputsFromPositions();
+	}
 	dragging = { type: null, idx: -1 };
 }
 
 function isMouseInCanvas() {
 	return mouseX >= 0 && mouseX < width && mouseY >= 0 && mouseY < height;
+}
+
+function radToDeg(r) { return r * 180 / Math.PI; }
+function normalizeDeg(a) {
+	let d = a;
+	while (d > 180) d -= 360;
+	while (d < -180) d += 360;
+	return d;
+}
+function updateAngleInputsFromPositions() {
+	const a1 = Math.atan2(p1.y - state.pivot.y, p1.x - state.pivot.x);
+	const a12 = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+	const th1 = normalizeDeg(radToDeg(a1));
+	const th2 = normalizeDeg(radToDeg(a12 - a1));
+	const th1El = byId('theta1');
+	const th2El = byId('theta2');
+	if (th1El) th1El.value = th1.toFixed(0);
+	if (th2El) th2El.value = th2.toFixed(0);
 }
 
 // -------------------------------
@@ -439,6 +488,10 @@ function wireUI() {
 	pauseBtn.addEventListener('click', () => {
 		state.paused = !state.paused;
 		pauseBtn.textContent = state.paused ? 'Play' : 'Pause';
+		// Cancel any ongoing drags when toggling
+		dragging = { type: null, idx: -1 };
+		// If switching to play, ignore any pending force placement
+		if (!state.paused) state.placingForce = false;
 	});
 
 	byId('resetBtn').addEventListener('click', resetSim);
